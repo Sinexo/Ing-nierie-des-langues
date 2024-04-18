@@ -1,8 +1,8 @@
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
 import pandas as pd
 import torch
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
-# torch.set_num_threads(torch.get_num_threads())
-# torch.cuda.is_available = lambda: False
+
+# Fonction pour charger et préparer les données
 def load_data(filename):
     df = pd.read_csv(filename)
     df['name'] = df['name'].astype(str)
@@ -10,43 +10,48 @@ def load_data(filename):
     df['input_text'] = df['name'] + " [SEP] " + df['review']
     return df['input_text'].tolist()
 
+# Classe pour le dataset
 class ReviewsDataset(torch.utils.data.Dataset):
     def __init__(self, encodings):
         self.encodings = encodings
 
     def __getitem__(self, idx):
+        # Les tenseurs sont créés sur la CPU ici
         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = item['input_ids'].clone()  # Add labels for the model to calculate loss
+        item['labels'] = item['input_ids'].clone()
         return item
 
     def __len__(self):
         return len(self.encodings['input_ids'])
 
-tokenizer = GPT2Tokenizer.from_pretrained('distilbert/distilgpt2')  # Use the small variant of GPT-2
-tokenizer.pad_token = tokenizer.eos_token
-model = GPT2LMHeadModel.from_pretrained('distilbert/distilgpt2')  # Use the small variant of GPT-2
+# Vérification de la disponibilité du GPU et configuration du périphérique
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"Using device: {device}")
 
+# Initialiser le tokenizer et le modèle
+tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
+tokenizer.pad_token = tokenizer.eos_token
+model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+model.to(device)  # Déplacer le modèle sur le GPU si disponible
+
+# Charger les données et les tokeniser
 texts = load_data('steam_data.csv')
 encodings = tokenizer(texts, truncation=True, padding=True, max_length=512)
+
+# Créer le dataset
 dataset = ReviewsDataset(encodings)
 
-# Depending on your available hardware, you might adjust this. For example, if you're using a GPU with 11GB of RAM, you might be able to go up to 8 or higher.
-# Always monitor your GPU usage to find the optimal batch size without running out of memory.
- # Increase the batch size if your GPU can handle it
-
+# Configuration de l'entraînement
 training_args = TrainingArguments(
     output_dir='./results',
-    num_train_epochs=3,  # Updated batch size
-    warmup_steps=250,
+    num_train_epochs=3,
+    per_device_train_batch_size=24,
+    warmup_steps=500,
     weight_decay=0.01,
     logging_dir='./logs',
-    per_device_train_batch_size=1,  # Increase if your GPU can handle it
-    # gradient_accumulation_steps=8,  # Use if you need to simulate a larger batch size
-    logging_steps=10,  # Log less frequently to reduce I/O overhead
-    save_strategy="epoch",  # Save checkpoints less frequently
-    # fp16=True,  # Enable this if your GPU supports FP
 )
 
+# Initialiser et lancer le Trainer
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -56,10 +61,20 @@ trainer.train()
 
 def generate_text(prompt):
     tokenizer.pad_token = tokenizer.eos_token
-    inputs = tokenizer.encode(prompt, return_tensors='pt')
-    outputs = model.generate(inputs, max_length=200, num_return_sequences=1)
+    inputs = tokenizer.encode(prompt, return_tensors='pt').to(device)
+    outputs = model.generate(
+        inputs,
+        max_length=200,
+        num_return_sequences=1,
+        temperature=0.9,   # Ajustez pour moins de prévisibilité
+        top_k=50,           # Les 50 meilleurs tokens sont pris en compte à chaque pas
+        top_p=0.95,         # Utilisation du nucleus sampling
+        no_repeat_ngram_size=2  # Empêche la répétition de n-grams jusqu'à une taille de 2
+    )
     text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return text
 
-generated_text = generate_text("Skyrim [SEP]")
+
+# Générer un texte
+generated_text = generate_text("What do you think about Elden Ring ?")
 print(generated_text)
