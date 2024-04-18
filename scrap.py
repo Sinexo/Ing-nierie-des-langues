@@ -10,7 +10,7 @@ def get_reviews(appid, n=20, language='english'):
         'filter': 'all',
         'language': language,
         'day_range': 9223372036854775807,
-        'review_type': 'all',
+        'review_type': 'negative',
         'purchase_type': 'all'
     }
 
@@ -22,7 +22,7 @@ def get_reviews(appid, n=20, language='english'):
             if 'reviews' in response_json:
                 reviews += response_json['reviews']
                 cursor = response_json['cursor']
-            if len(response_json['reviews']) < 100:
+            if len(response_json['reviews']) < 200:
                 break
         else:
             print(f"Failed to fetch reviews for appid {appid} in {language}")
@@ -30,7 +30,7 @@ def get_reviews(appid, n=20, language='english'):
 
     return reviews[:n]
 
-def get_n_appids(n=100, filter_by='topsellers'):
+def get_n_appids(n=200, filter_by='topsellers'):
     appids = []
     page = 0
 
@@ -85,7 +85,7 @@ for appid in appids:
         print(f"Failed to retrieve game details for appid {appid}")
 
 
-with open('steam_games_data.json', 'w', encoding='utf-8') as f:
+with open('steam_data.json', 'w', encoding='utf-8') as f:
     json.dump(games_data, f, ensure_ascii=False, indent=4)
 
-print("Les données ont été enregistrées dans 'steam_games_data.json'.")
+print("Les données ont été enregistrées dans 'steam_data.json'.")
