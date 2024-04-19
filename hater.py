@@ -59,6 +59,12 @@ trainer = Trainer(
 )
 trainer.train()
 
+
+# Sauvegarder le modèle et le tokenizer
+model_path = './Hater'
+model.save_pretrained(model_path)
+tokenizer.save_pretrained(model_path)
+
 def generate_text(prompt):
     tokenizer.pad_token = tokenizer.eos_token
     inputs = tokenizer.encode(prompt, return_tensors='pt').to(device)
@@ -76,5 +82,5 @@ def generate_text(prompt):
 
 
 # Générer un texte
-generated_text = generate_text("What do you think about Elden Ring ?")
+generated_text = generate_text("What do you think about Helldivers 2 ?")
 print(generated_text)

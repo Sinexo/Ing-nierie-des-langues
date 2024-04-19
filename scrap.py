@@ -2,7 +2,7 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
-def get_reviews(appid, n=20, language='english'):
+def get_reviews(appid, n=40, language='english'):  # Modification ici pour n=40
     reviews = []
     cursor = '*'
     params = {
@@ -10,7 +10,7 @@ def get_reviews(appid, n=20, language='english'):
         'filter': 'all',
         'language': language,
         'day_range': 9223372036854775807,
-        'review_type': 'all',
+        'review_type': 'negative',  # Assurez-vous que c'est bien le type de critique que vous voulez
         'purchase_type': 'all'
     }
 
@@ -20,17 +20,18 @@ def get_reviews(appid, n=20, language='english'):
         if response.ok:
             response_json = response.json()
             if 'reviews' in response_json:
-                reviews += response_json['reviews']
+                reviews.extend(response_json['reviews'])
                 cursor = response_json['cursor']
-            if len(response_json['reviews']) < 100:
-                break
+                if len(response_json['reviews']) < 20:  # Suppose chaque lot retourne 20 avis ou moins
+                    break
         else:
             print(f"Failed to fetch reviews for appid {appid} in {language}")
             break
 
     return reviews[:n]
 
-def get_n_appids(n=100, filter_by='topsellers'):
+
+def get_n_appids(n=200, filter_by='topsellers'):
     appids = []
     page = 0
 
@@ -50,7 +51,7 @@ def get_n_appids(n=100, filter_by='topsellers'):
     return appids[:n]
 
 # ID des jes
-appids = get_n_appids(100)
+appids = get_n_appids(1250)
 
 # Collecte des détails des jeux et des avis
 games_data = []
@@ -85,7 +86,7 @@ for appid in appids:
         print(f"Failed to retrieve game details for appid {appid}")
 
 
-with open('steam_games_data.json', 'w', encoding='utf-8') as f:
+with open('steam_data.json', 'w', encoding='utf-8') as f:
     json.dump(games_data, f, ensure_ascii=False, indent=4)
 
-print("Les données ont été enregistrées dans 'steam_games_data.json'.")
+print("Les données ont été enregistrées dans 'steam_data.json'.")
