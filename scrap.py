@@ -49,10 +49,10 @@ def get_n_appids(n=100, filter_by='topsellers'):
 
     return appids[:n]
 
-# ID des jes
+# ID
 appids = get_n_appids(100)
 
-# Collecte des détails des jeux et des avis
+# Collecte des détails des jeux et avis
 games_data = []
 for appid in appids:
     url = f"https://store.steampowered.com/api/appdetails?appids={appid}"
