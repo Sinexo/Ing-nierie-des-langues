@@ -8,11 +8,10 @@ def filter_by_language(texts):
     filtered_texts = []
     for text in texts:
         try:
-            # Détecter la langue et filtrer
             if detect(text) in ['en', 'fr']:
                 filtered_texts.append(text)
         except LangDetectException:
-            pass  # Passer si la langue du texte ne peut pas être détectée
+            pass
     return filtered_texts
 
 # Charger les données depuis le fichier JSON
@@ -48,11 +47,9 @@ games_df['developers'] = games_df['developers'].apply(lambda x: ', '.join(x) if 
 games_df['publishers'] = games_df['publishers'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
 games_df['price'] = games_df['price'].replace('[\$,€£]', '', regex=True)
 
-# Fusionner le DataFrame original avec les nouvelles colonnes one-hot
 full_games_df = pd.concat([games_df, df_genres, df_categories, df_platforms], axis=1)
 full_games_df.drop(['genres', 'categories', 'platforms', 'genres_list', 'categories_list', 'platforms_list'], axis=1, inplace=True)
 
-# Créer un DataFrame pour les avis avec les données du jeu associées
 reviews_df = pd.DataFrame()
 
 # Extrait et expand les avis en ligne individuelles
@@ -73,5 +70,4 @@ columns_to_drop = [
 ]
 reviews_df.drop(columns=columns_to_drop, inplace=True)
 
-# Exporter les données complètes en CSV avec encodage UTF-8
 reviews_df.to_csv('cleaned_complete_reviews_data.csv', index=False, encoding='utf-8-sig')
