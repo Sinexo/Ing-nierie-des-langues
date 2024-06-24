@@ -2,7 +2,7 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
-def get_reviews(appid, n=20, language='english'):
+def get_reviews(appid, n, language='english'):
     reviews = []
     cursor = '*'
     params = {
@@ -10,7 +10,7 @@ def get_reviews(appid, n=20, language='english'):
         'filter': 'all',
         'language': language,
         'day_range': 9223372036854775807,
-        'review_type': 'all',
+        'review_type': 'negative',
         'purchase_type': 'all'
     }
 
@@ -20,17 +20,18 @@ def get_reviews(appid, n=20, language='english'):
         if response.ok:
             response_json = response.json()
             if 'reviews' in response_json:
-                reviews += response_json['reviews']
+                reviews.extend(response_json['reviews'])
                 cursor = response_json['cursor']
-            if len(response_json['reviews']) < 100:
-                break
+                if len(response_json['reviews']) < 40:
+                    break
         else:
-            print(f"Failed to fetch reviews for appid {appid} in {language}")
+            print(f"Failed to fetch reviews for appid {appid}")
             break
 
     return reviews[:n]
 
-def get_n_appids(n=100, filter_by='topsellers'):
+
+def get_n_appids(n, filter_by='topsellers'):
     appids = []
     page = 0
 
@@ -49,10 +50,11 @@ def get_n_appids(n=100, filter_by='topsellers'):
 
     return appids[:n]
 
-# ID
-appids = get_n_appids(100)
+# appID des jeux
+appids = get_n_appids(2000) # nombre de jeu à scraper
 
 # Collecte des détails des jeux et avis
+games_data = []
 games_data = []
 for appid in appids:
     url = f"https://store.steampowered.com/api/appdetails?appids={appid}"
@@ -61,22 +63,17 @@ for appid in appids:
         details_json = details_response.json()
         if details_json.get(str(appid), {}).get('success', False):
             data = details_json[str(appid)]['data']
-            english_reviews = get_reviews(appid, 20, 'english')
-            french_reviews = get_reviews(appid, 20, 'french')
+            english_reviews = get_reviews(appid, 50, 'english')  # nombre d'avis à scaper
             game_info = {
                 'name': data.get('name', 'N/A'),
-                'appid': appid,
-                'categories': data.get('categories', []),
+                # 'categories': data.get('categories', []), supprimer car peu pertinent dans la génération de commentaire
                 'genres': data.get('genres', []),
-                'ratings': data.get('metacritic', {}).get('score', 'N/A'),
                 'description': data.get('short_description', 'No description available.'),
-                'price': data.get('price_overview', {}).get('final_formatted', 'Free or not available'),
+                # 'price': data.get('price_overview', {}).get('final_formatted', 'Free or not available'), supprimer car peu pertinent dans la génération de commentaire
                 'developers': data.get('developers', ['Unknown']),
                 'publishers': data.get('publishers', ['Unknown']),
                 'english_reviews': english_reviews,
-                'french_reviews': french_reviews,
-                'languages': data.get('supported_languages', 'No languages listed.'),
-                'platforms': list(data.get('platforms', {}).keys())
+                # 'platforms': list(data.get('platforms', {}).keys()) supprimer car peu pertinent dans la génération de commentaire
             }
             games_data.append(game_info)
         else:
@@ -85,7 +82,8 @@ for appid in appids:
         print(f"Failed to retrieve game details for appid {appid}")
 
 
-with open('steam_games_data.json', 'w', encoding='utf-8') as f:
+
+with open('steam_data.json', 'w', encoding='utf-8') as f:
     json.dump(games_data, f, ensure_ascii=False, indent=4)
 
-print("Les données ont été enregistrées dans 'steam_games_data.json'.")
+print("Les données ont été enregistrées dans 'steam_data.json'.")
